@@ -1,0 +1,37 @@
+{
+    "name": "apache-vhost/apache-vhost",
+    "description": "Util for automatic vhost creation (nvs)",
+    "keywords": ["apache", "vhost", "autocreation"],
+    "homepage": "http://www.netvlies.nl/",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Danny Dörfel",
+            "email": "ddorfel@netvlies.nl",
+            "homepage": "http://www.netvlies.nl"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/netvlies/apache-vhost/issues"
+    },
+    "require": {
+        "php": ">=5.3.3",
+        "symfony/console": "~2.2@dev",
+        "symfony/finder": "~2.2@dev",
+        "symfony/process": "~2.2@dev",
+        "symfony/yaml": "~2.2@dev"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "~3.7.10"
+    },
+    "autoload": {
+        "psr-0": { "Netvlies\\ApacheVhost": "src/" }
+    },
+    "bin": ["bin/vhost"],
+    "extra": {
+        "branch-alias": {
+            "dev-master": "1.0-dev"
+        }
+    }
+}
