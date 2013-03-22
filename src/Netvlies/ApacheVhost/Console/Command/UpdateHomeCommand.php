@@ -171,10 +171,10 @@ EOF
         }
 
         extract($config);
-        ob_start();
-        include __DIR__ . '/../Resources/views/vhostSsl.php';
-        $vhostDeclaration = ob_get_contents();
-        ob_end_clean();
+//        ob_start();
+        var_dump(include __DIR__ . '/../Resources/views/vhostSsl.php'); die;
+//        $vhostDeclaration = ob_get_contents();
+//        ob_end_clean();
 
         //todo: test if we can write here (are you permitted? Run as sudo)
         file_put_contents($outputFile, $vhostDeclaration);

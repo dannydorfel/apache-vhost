@@ -29,8 +29,9 @@ class SubdomainVhost
     private $serverName;
 
     /**
+     * @param $serverName
      * @param \SplFileInfo $fileInfo
-     * @param              $hostname
+     * @param array $options
      */
     public function __construct($serverName, \SplFileInfo $fileInfo, array $options = array())
     {
@@ -53,19 +54,19 @@ class SubdomainVhost
     {
         $serverName = $this->serverName;
 
+        $loader = new \Twig_Loader_Filesystem(__DIR__ . '/../Resources/views/');
+        $twig = new \Twig_Environment($loader);
+
         $documentRootFinder = new DocumentRootFinder();
         $documentRoot = $documentRootFinder->find($this->fileInfo->getRealPath());
 
-        $config = "<VirtualHost %s>\n%s</VirtualHost>\n";
+        $virtualHost = $this->getNameVirtualHost(array());
+//        $directories = $this->getDirectoryDeclaration($config);
 
-        $nameVirtualHost = $this->getNameVirtualHost($config);
-        $declaration = $this->getServerDeclaration($serverName, $documentRoot, $config);
-        $directories = $this->getDirectoryDeclaration($config);
+        $vars = compact('virtualHost', 'serverName', 'adminEmail', 'documentRoot', 'hostName');
 
-        $content = $declaration . $directories;
-        $config = sprintf($config, $nameVirtualHost, $content);
-
-        return $config;
+        $output = $twig->render('vhost.twig', $vars);
+        return $output;
     }
 
     protected function getNameVirtualHost($config)
@@ -74,20 +75,6 @@ class SubdomainVhost
         $port = isset($config['port']) ? $config['port'] : '80';
 
         return "$nameVirtualHost:$port";
-    }
-
-    protected function getServerDeclaration($serverName, $documentRoot, $config)
-    {
-        $email = isset($config['email']) ? $config['email'] : 'webmaster@localhost';
-
-        $parameters = array(
-            "\tServerAdmin $email",
-            "\tServerName $serverName",
-            "\tDocumentRoot $documentRoot",
-        );
-
-        $parameters = implode(PHP_EOL, $parameters) . PHP_EOL;
-        return $parameters;
     }
 
     protected function getDirectoryDeclaration($config)
