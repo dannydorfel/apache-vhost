@@ -21,7 +21,7 @@ use Symfony\Component\Finder\Finder;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * Class CreateConfigCommand
+ * Class InitCommand
  * @author Danny Dörfel <ddorfel@netvlies.nl>
  * @package Netvlies\ApacheVhost\Console\Command
  */

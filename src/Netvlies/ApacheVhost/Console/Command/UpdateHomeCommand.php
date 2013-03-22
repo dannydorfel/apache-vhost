@@ -10,7 +10,7 @@
  */
 namespace Netvlies\ApacheVhost\Console\Command;
 
-use Netvlies\ApacheVhost\Config\HomeConfig;
+use Netvlies\ApacheVhost\Config\DirectoryConfig;
 use Netvlies\ApacheVhost\System\Environment;
 use Netvlies\ApacheVhost\Vhost\SubdomainVhost;
 use Symfony\Component\Console\Command\Command;
@@ -19,6 +19,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Finder\Finder;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * @author Danny Dörfel <ddorfel@netvlies.nl>
@@ -73,25 +74,28 @@ EOF
 
         // todo: fetch config file or build from defaults
         $home = $environment->getHome($environment->getCurrentUser());
-        $config = new HomeConfig($home);
-        $config->ensureDirectories();
+
+        $config = Yaml::parse(file_get_contents($home . '/.httpd/directory_config.yml'));
+
+        $config = new DirectoryConfig($config);
+//        $config->ensureDirectories();
 
         $hostname = $environment->getSystemHostName();
 
         $finder = new Finder();
-        foreach ($finder->directories()->depth('== 0')->in($config->getHome() . '/vhosts') as $directory) {
+        foreach ($finder->directories()->depth('== 0')->in($config->getVhostsDir()) as $directory) {
             $vhost = $this->createVhost($directory, $hostname, $config);
 
-            if (($vhost !== false) && $config->useSsl()) {
-                $this->createSsl($vhost);
-                $this->createSslVhost($vhost);
-            }
+//            if (($vhost !== false) && $config->()) {
+//                $this->createSsl($vhost);
+//                $this->createSslVhost($vhost);
+//            }
         }
 
-        if ($this->input->hasOption('cleanup')) {
+//        if ($this->input->hasOption('cleanup')) {
     //        $this->cleanupVhosts();
     //        $this->cleanupSslVhosts();
-        }
+//        }
 
         return empty($changed) ? 0 : 1;
     }
