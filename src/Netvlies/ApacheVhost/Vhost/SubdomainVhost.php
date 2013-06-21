@@ -54,6 +54,8 @@ class SubdomainVhost
     {
         $serverName = $this->serverName;
 
+        $adminEmail = 'webmaster@localhost';
+
         $loader = new \Twig_Loader_Filesystem(__DIR__ . '/../Resources/views/');
         $twig = new \Twig_Environment($loader);
 

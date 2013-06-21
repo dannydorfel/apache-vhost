@@ -10,10 +10,12 @@
  */
 namespace Netvlies\ApacheVhost\Console;
 
+use Netvlies\ApacheVhost\Console\Command\ConfigCheckCommand;
+use Netvlies\ApacheVhost\Console\Command\CreateVhostCommand;
 use Netvlies\ApacheVhost\Console\Command\InitCommand;
+use Netvlies\ApacheVhost\Console\Command\VhostUpdateDirCommand;
 use Netvlies\ApacheVhost\System\Environment;
 use Symfony\Component\Console\Application as BaseApplication;
-use Netvlies\ApacheVhost\Console\Command\UpdateHomeCommand;
 use Netvlies\ApacheVhost\Console\Command\ReadmeCommand;
 //use Netvlies\ApacheVhost\Console\Command\SelfUpdateCommand;
 
@@ -33,8 +35,10 @@ class Application extends BaseApplication
 
         parent::__construct('Apache Vhost Utility', 0.1);
 
+        $this->add(new ConfigCheckCommand());
         $this->add(new InitCommand());
-        $this->add(new UpdateHomeCommand());
+        $this->add(new VhostUpdateDirCommand());
+        $this->add(new CreateVhostCommand());
         $this->add(new ReadmeCommand());
 //        $this->add(new SelfUpdateCommand());
 
