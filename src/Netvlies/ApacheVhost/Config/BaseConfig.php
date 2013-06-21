@@ -14,14 +14,15 @@ use Netvlies\ApacheVhost\System\Environment;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * Class DirectoryConfig
+ * Class BaseConfig
  * @author Danny Dörfel <ddorfel@netvlies.nl>
  * @package Netvlies\ApacheVhost\Config
  */
-class DirectoryConfig
+class BaseConfig
 {
     protected $configDir;
     protected $vhostsDir;
+    protected $hostname;
     protected $sitesDir = "/sites.d";
     protected $sslSitesDir = "/sslsites.d";
     protected $sslKeyDir = "/ssl-files/private";
@@ -73,6 +74,24 @@ class DirectoryConfig
         $file = realpath($home) . '/.httpd/directory_config.yml';
 
         return self::fromYmlFile($file);
+    }
+
+    /**
+     * @param mixed $hostname
+     * @return DirectoryConfig
+     */
+    public function setHostname($hostname)
+    {
+        $this->hostname = $hostname;
+        return $this;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getHostname()
+    {
+        return $this->hostname;
     }
 
     /**

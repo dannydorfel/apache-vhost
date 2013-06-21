@@ -10,7 +10,7 @@
  */
 namespace Netvlies\ApacheVhost\Console\Command;
 
-use Netvlies\ApacheVhost\Config\DirectoryConfig;
+use Netvlies\ApacheVhost\Config\BaseConfig;
 use Netvlies\ApacheVhost\System\Environment;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\DialogHelper;
@@ -44,8 +44,10 @@ class InitCommand extends ApacheVhostCommand
         $this
             ->setName('init')
             ->setDefinition(array(
-                new InputOption('config-dir', 'c', InputOption::VALUE_OPTIONAL, 'The configuration path for output', null),
-                new InputOption('vhosts-dir', 'd', InputOption::VALUE_OPTIONAL, 'The vhosts directory to use', null),
+                new InputOption('config-dir', 'c', InputOption::VALUE_REQUIRED, 'The configuration path for output', null),
+                new InputOption('vhosts-dir', 'd', InputOption::VALUE_REQUIRED, 'The vhosts directory to use as default', null),
+                new InputOption('hostname', '', InputOption::VALUE_REQUIRED, 'The hostname to record as default', null),
+                new InputOption('force-update', '', InputOption::VALUE_NONE, 'If added, an existing configuration will be updated')
             ))
             ->setDescription('Creates the parameters config')
             ->setHelp(<<<EOF
@@ -75,32 +77,40 @@ EOF
 
         $home = $environment->getHome($environment->getCurrentUser());
 
+        $hostname = $input->getOption('hostname') ? $input->getOption('hostname') : $environment->getSystemHostName();
         $configDir = $input->getOption('config-dir') ? $input->getOption('config-dir') : realpath($home) . '/.httpd';
         $vhostsDir = $input->getOption('vhosts-dir') ? $input->getOption('vhosts-dir') : realpath($home) . '/vhosts';
 
-        $directoryConfig = new DirectoryConfig();
-        $directoryConfig->setConfigDir($configDir)
+        if (file_exists($configDir) && ! $input->getOption('force-update')) {
+            $output->writeln('<error>Config directory already exists, use --force-update for updating the config</error>');
+            return 1;
+        }
+
+        $config = new BaseConfig();
+        $config->setConfigDir($configDir)
             ->setVhostsDir($vhostsDir);
 
-        $result = $this->ensureCreated($directoryConfig, $this->getHelperSet()->get('dialog'), $output);
+        $result = $this->ensureCreated($config, $this->getHelperSet()->get('dialog'), $output);
 
         if (! $result) {
             $this->output->writeln('An error occured creating/accessing the directories');
             return 1;
         }
 
-        $file = $directoryConfig->getConfigDir() . '/directory_config.yml';
-        file_put_contents($file, Yaml::dump($directoryConfig->toArray()));
+        $config->setHostname($hostname);
+
+        $file = $config->getConfigDir() . '/directory_config.yml';
+        file_put_contents($file, Yaml::dump($config->toArray()));
         return 0;
     }
 
     /**
-     * @param DirectoryConfig $directoryConfig
+     * @param BaseConfig $directoryConfig
      * @param DialogHelper $dialog
      * @param OutputInterface $output
      * @return bool
      */
-    protected function ensureCreated(DirectoryConfig $directoryConfig, DialogHelper $dialog, OutputInterface $output)
+    protected function ensureCreated(BaseConfig $directoryConfig, DialogHelper $dialog, OutputInterface $output)
     {
         $dialogQuestion = "<question>The directory %s does not exist yet. Create it?</question> (Y/N) ";
 
