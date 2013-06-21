@@ -11,9 +11,9 @@
 namespace Netvlies\ApacheVhost\Console\Command;
 
 use Netvlies\ApacheVhost\Config\DirectoryConfig;
-use Netvlies\ApacheVhost\Config\HttpdConfig;
 use Netvlies\ApacheVhost\System\Environment;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Helper\DialogHelper;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -25,7 +25,7 @@ use Symfony\Component\Yaml\Yaml;
  * @author Danny Dörfel <ddorfel@netvlies.nl>
  * @package Netvlies\ApacheVhost\Console\Command
  */
-class InitCommand extends Command
+class InitCommand extends ApacheVhostCommand
 {
     /**
      * @var InputInterface
@@ -60,6 +60,11 @@ EOF
             );
     }
 
+    /**
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @return int|null
+     */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $this->input = $input;
@@ -70,17 +75,14 @@ EOF
 
         $home = $environment->getHome($environment->getCurrentUser());
 
-        $configDir = $input->hasOption('config-dir') && $input->getOption('config-dir')
-            ? $input->getOption('config-dir') : realpath($home) . '/.httpd';
-
-        $vhostsDir = $input->hasOption('vhosts-dir') && $input->getOption('vhosts-dir')
-            ? $input->getOption('vhosts-dir') : realpath($home) . '/vhosts';
+        $configDir = $input->getOption('config-dir') ? $input->getOption('config-dir') : realpath($home) . '/.httpd';
+        $vhostsDir = $input->getOption('vhosts-dir') ? $input->getOption('vhosts-dir') : realpath($home) . '/vhosts';
 
         $directoryConfig = new DirectoryConfig();
         $directoryConfig->setConfigDir($configDir)
             ->setVhostsDir($vhostsDir);
 
-        $result = $directoryConfig->ensureCreated($this->getHelperSet()->get('dialog'), $this->output);
+        $result = $this->ensureCreated($directoryConfig, $this->getHelperSet()->get('dialog'), $output);
 
         if (! $result) {
             $this->output->writeln('An error occured creating/accessing the directories');
@@ -92,17 +94,49 @@ EOF
         return 0;
     }
 
-    protected function ensureCreated($dir)
+    /**
+     * @param DirectoryConfig $directoryConfig
+     * @param DialogHelper $dialog
+     * @param OutputInterface $output
+     * @return bool
+     */
+    protected function ensureCreated(DirectoryConfig $directoryConfig, DialogHelper $dialog, OutputInterface $output)
     {
-        $dialogQuestion = "<question>The directory $dir does not exist yet. Create it?</question> ";
-        $dialog = $this->getHelperSet()->get('dialog');
+        $dialogQuestion = "<question>The directory %s does not exist yet. Create it?</question> (Y/N) ";
 
-        $result = true;
-        if (! file_exists($dir)) {
-            if (!$dialog->askConfirmation($this->output, $dialogQuestion, false)) {
+        $confirm = function ($dir) use ($dialog, $output, $dialogQuestion) {
+            return $dialog->askConfirmation($output, sprintf($dialogQuestion, $dir), false);
+        };
+
+        foreach (array('getConfigDir', 'getVhostsDir') as $callable) {
+            if (! $this->ensureDirectory($directoryConfig->$callable(), $confirm)) {
                 return false;
             }
-            $result = mkdir($dir, 0777, true);
+        }
+
+        foreach (array('getSslSitesDir', 'getSslKeyDir', 'getSitesDir') as $callable) {
+            if (! $this->ensureDirectory($directoryConfig->$callable())) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param $dir
+     * @param callable $dialogCallback
+     * @return bool
+     */
+    protected function ensureDirectory($dir, \Closure $dialogCallback = null)
+    {
+        $result = true;
+        if (! file_exists($dir)) {
+            if (is_null($dialogCallback) || $dialogCallback($dir)) {
+                $result = mkdir($dir, 0777, true);
+            } else {
+                $result = false;
+            }
         }
         return $result;
     }

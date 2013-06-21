@@ -10,9 +10,8 @@
  */
 namespace Netvlies\ApacheVhost\Config;
 
-use Symfony\Component\Console\Helper\DialogHelper;
-use Symfony\Component\Console\Output\OutputInterface;
-use \InvalidArgumentException;
+use Netvlies\ApacheVhost\System\Environment;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * Class DirectoryConfig
@@ -30,7 +29,7 @@ class DirectoryConfig
 
     /**
      * @param array $config
-     * @throws InvalidArgumentException
+     * @throws \InvalidArgumentException
      */
     public function __construct(array $config = array())
     {
@@ -40,58 +39,40 @@ class DirectoryConfig
 
         foreach (array_keys(get_object_vars($this)) as $property) {
             if (! isset($config[$property])) {
-                throw new InvalidArgumentException("Property $property not found in provided config");
+                throw new \InvalidArgumentException("Property $property not found in provided config");
             }
             $this->$property = $config[$property];
         }
     }
 
     /**
-     * @param DialogHelper    $dialog
-     * @param OutputInterface $output
-     *
-     * @return bool
+     * @param array $config
+     * @return DirectoryConfig
      */
-    public function ensureCreated(DialogHelper $dialog, OutputInterface $output)
+    public static function fromArray(array $config)
     {
-        $dialogQuestion = "<question>The directory %s does not exist yet. Create it?</question> (Y/N) ";
-
-        $confirm = function ($dir) use ($dialog, $output, $dialogQuestion) {
-            return $dialog->askConfirmation($output, sprintf($dialogQuestion, $dir), false);
-        };
-
-        foreach (array('getConfigDir', 'getVhostsDir') as $callable) {
-            if (! $this->ensureDirectory($this->$callable(), $confirm)) {
-                return false;
-            }
-        }
-
-        foreach (array('getSslSitesDir', 'getSslKeyDir', 'getSitesDir') as $callable) {
-            if (! $this->ensureDirectory($this->$callable())) {
-                return false;
-            }
-        }
-
-        return true;
+        return new self($config);
     }
 
     /**
-     * @param          $dir
-     * @param callable $dialogCallback
-     *
-     * @return bool
+     * @param string $file
+     * @return DirectoryConfig
      */
-    protected function ensureDirectory($dir, \Closure $dialogCallback = null)
+    public static function fromYmlFile($file)
     {
-        $result = true;
-        if (! file_exists($dir)) {
-            if (is_null($dialogCallback) || $dialogCallback($dir)) {
-                $result = mkdir($dir, 0777, true);
-            } else {
-                $result = false;
-            }
-        }
-        return $result;
+        return self::fromArray(Yaml::parse(file_get_contents($file)));
+    }
+
+    /**
+     * @param Environment $environment
+     * @return DirectoryConfig
+     */
+    public static function fromEnvironmentDefaults(Environment $environment)
+    {
+        $home = $environment->getHome($environment->getCurrentUser());
+        $file = realpath($home) . '/.httpd/directory_config.yml';
+
+        return self::fromYmlFile($file);
     }
 
     /**
