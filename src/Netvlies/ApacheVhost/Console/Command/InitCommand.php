@@ -99,7 +99,7 @@ EOF
 
         $config->setHostname($hostname);
 
-        $file = $config->getConfigDir() . '/directory_config.yml';
+        $file = $config->getConfigDir() . '/config.yml';
         file_put_contents($file, Yaml::dump($config->toArray()));
         return 0;
     }

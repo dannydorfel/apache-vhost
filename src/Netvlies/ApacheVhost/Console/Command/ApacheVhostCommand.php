@@ -23,7 +23,7 @@ abstract class ApacheVhostCommand extends Command
 
         // check the config
         $command = $this->getApplication()->find('config:check');
-        $input = new ArrayInput(array('--config' . $file));
+        $input = new ArrayInput(array('command' => 'config:check',  '--config' => $file));
         return $command->run($input, $output) == 0;
     }
 
@@ -33,6 +33,6 @@ abstract class ApacheVhostCommand extends Command
         $environment = $this->getApplication()->getEnvironment();
         $home = $environment->getHome($environment->getCurrentUser());
 
-        return $file ? $file : realpath($home) . '/.httpd/directory_config.yml';
+        return $file ? $file : realpath($home) . '/.httpd/config.yml';
     }
 }

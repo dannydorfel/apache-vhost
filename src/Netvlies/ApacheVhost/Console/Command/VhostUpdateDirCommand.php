@@ -10,8 +10,7 @@
  */
 namespace Netvlies\ApacheVhost\Console\Command;
 
-use Netvlies\ApacheVhost\Config\DirectoryConfig;
-use Netvlies\ApacheVhost\System\Environment;
+use Netvlies\ApacheVhost\Config\BaseConfig;
 use Netvlies\ApacheVhost\Vhost\SubdomainVhost;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -46,7 +45,7 @@ class VhostUpdateDirCommand extends ApacheVhostCommand
             ->setDefinition(array(
                 new InputOption('config', 'c', InputOption::VALUE_REQUIRED, 'The config file to use', null),
                 new InputOption('dir', 'd', InputOption::VALUE_REQUIRED, 'The directory to crawl and update, defaults to the dir from config', null),
-                new InputOption('host', '', InputOption::VALUE_REQUIRED, 'Which hostname to use (mytestdomain.nl => project.mytestdomain.nl), defaults to system hostname'),
+                new InputOption('hostname', '', InputOption::VALUE_REQUIRED, 'Which hostname to use (mytestdomain.nl => project.mytestdomain.nl), defaults to system hostname'),
                 new InputOption('dry-run', '', InputOption::VALUE_NONE, 'Only shows which files would have been modified'),
             ))
             ->setDescription('Creates/updates vhosts by crawling a directory')
@@ -67,42 +66,34 @@ EOF
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $this->input = $input;
-        $this->output = $output;
-
         $configFile = $this->determineConfigFile($input->getOption('config'));
         if (! $this->checkConfig($configFile)) {
+            $output->writeln('<error>There is a problem with the config, run check:config for more information');
             return 1;
         }
 
-        $config = DirectoryConfig::fromYmlFile($configFile);
-die;
-
-
-        $hostname = $environment->getSystemHostName();
+        $config = BaseConfig::fromYmlFile($configFile);
+        $hostname = $input->getOption('hostname') ? $input->getOption('hostname') : $config->getHostname();
+        $vhostDirectory = $input->getOption('dir') ? $input->getOption('dir') : $config->getVhostsDir();
 
         $finder = new Finder();
-        foreach ($finder->directories()->depth('== 0')->in($config->getVhostsDir()) as $directory) {
-            var_dump($directory); die;
-            $vhost = $this->callCreateVhost($directory, $hostname, $config, $input, $output);
-
-//            if (($vhost !== false) && $config->()) {
-//                $this->createSsl($vhost);
-//                $this->createSslVhost($vhost);
-//            }
+        foreach ($finder->directories()->depth('== 0')->in($vhostDirectory) as $directory) {
+            $this->callCreateVhost($directory, $hostname, $output);
         }
 
 //        if ($this->input->hasOption('cleanup')) {
     //        $this->cleanupVhosts();
     //        $this->cleanupSslVhosts();
-//        }
 
         return empty($changed) ? 0 : 1;
     }
 
-    protected function callCreateVhost($directory, $hostname, $config)
+    protected function callCreateVhost($directory, $hostname, $output)
     {
-
+        // check the config
+        $command = $this->getApplication()->find('vhost:create');
+        $input = new ArrayInput(array('command' => 'vhost:create', 'path' => $directory, 'hostname' => $hostname));
+        return $command->run($input, $output) == 0;
     }
 
 //    protected function handleVhost($vhost, $documentRoot)

@@ -10,9 +10,7 @@
  */
 namespace Netvlies\ApacheVhost\Console\Command;
 
-use Netvlies\ApacheVhost\Config\DirectoryConfig;
-use Netvlies\ApacheVhost\Config\HttpdConfig;
-use Netvlies\ApacheVhost\System\Environment;
+use Netvlies\ApacheVhost\Config\BaseConfig;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputInterface;
@@ -69,13 +67,13 @@ EOF
         }
 
         try {
-            $config = DirectoryConfig::fromYmlFile($configFile);
-        } catch (Exception $e) {
+            $config = BaseConfig::fromYmlFile($configFile);
+        } catch (\Exception $e) {
             $output->writeln("<error>{$e->getMessage()}</error>");
             return 1;
         }
 
-        $output->writeln("<info>Directory config found and ok</info>");
+        $output->writeln("<info>Config found and ok</info>");
         return 0;
     }
 }

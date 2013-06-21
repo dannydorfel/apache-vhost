@@ -48,7 +48,7 @@ class BaseConfig
 
     /**
      * @param array $config
-     * @return DirectoryConfig
+     * @return BaseConfig
      */
     public static function fromArray(array $config)
     {
@@ -57,7 +57,7 @@ class BaseConfig
 
     /**
      * @param string $file
-     * @return DirectoryConfig
+     * @return BaseConfig
      */
     public static function fromYmlFile($file)
     {
@@ -66,7 +66,7 @@ class BaseConfig
 
     /**
      * @param Environment $environment
-     * @return DirectoryConfig
+     * @return BaseConfig
      */
     public static function fromEnvironmentDefaults(Environment $environment)
     {
@@ -78,7 +78,7 @@ class BaseConfig
 
     /**
      * @param mixed $hostname
-     * @return DirectoryConfig
+     * @return BaseConfig
      */
     public function setHostname($hostname)
     {
@@ -169,6 +169,7 @@ class BaseConfig
     public function toArray()
     {
         return array(
+            'hostname'              => $this->getHostname(),
             'configDir'             => $this->configDir,
             'vhostsDir'             => $this->vhostsDir,
             'sitesDir'              => $this->sitesDir,

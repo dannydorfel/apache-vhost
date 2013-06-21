@@ -61,37 +61,8 @@ EOF
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $this->input = $input;
-        $this->output = $output;
 
-        /** @var $environment Environment */
-        $environment = $this->getApplication()->getEnvironment();
-
-        // todo: fetch config file or build from defaults
-        $home = $environment->getHome($environment->getCurrentUser());
-
-        $config = Yaml::parse(file_get_contents($home . '/.httpd/directory_config.yml'));
-
-        $config = new DirectoryConfig($config);
-//        $config->ensureDirectories();
-
-        $hostname = $environment->getSystemHostName();
-
-        $finder = new Finder();
-        foreach ($finder->directories()->depth('== 0')->in($config->getVhostsDir()) as $directory) {
-            var_dump($directory); die;
-            $vhost = $this->createVhost($directory, $hostname, $config);
-
-//            if (($vhost !== false) && $config->()) {
-//                $this->createSsl($vhost);
-//                $this->createSslVhost($vhost);
-//            }
-        }
-
-//        if ($this->input->hasOption('cleanup')) {
-    //        $this->cleanupVhosts();
-    //        $this->cleanupSslVhosts();
-//        }
+        var_dump($input->getArguments());
 
         return empty($changed) ? 0 : 1;
     }
