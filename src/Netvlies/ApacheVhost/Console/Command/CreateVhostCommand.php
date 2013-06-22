@@ -10,21 +10,16 @@
  */
 namespace Netvlies\ApacheVhost\Console\Command;
 
-use Netvlies\ApacheVhost\Config\DirectoryConfig;
-use Netvlies\ApacheVhost\System\Environment;
+use Netvlies\ApacheVhost\Config\BaseConfig;
 use Netvlies\ApacheVhost\Vhost\SubdomainVhost;
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Finder\Finder;
-use Symfony\Component\Yaml\Yaml;
 
 /**
  * @author Danny Dörfel <ddorfel@netvlies.nl>
  */
-class CreateVhostCommand extends Command
+class CreateVhostCommand extends ApacheVhostCommand
 {
     /**
      * @var InputInterface
@@ -43,8 +38,10 @@ class CreateVhostCommand extends Command
         $this
             ->setName('vhost:create')
             ->setDefinition(array(
-                new InputArgument('path', InputArgument::REQUIRED, 'The path to the web directory'),
-                new InputArgument('hostname', InputArgument::REQUIRED, 'The hostname for the vhost'),
+                new InputOption('path', '', InputOption::VALUE_REQUIRED, 'The path to the web directory'),
+                new InputOption('hostname', '', InputOption::VALUE_REQUIRED, 'The hostname for the vhost'),
+                new InputOption('config', '', InputOption::VALUE_REQUIRED, 'The config file to use'),
+                new InputOption('sites-dir', '', InputOption::VALUE_REQUIRED, 'The sites directory to write the files'),
 //                new InputOption('dry-run', '', InputOption::VALUE_NONE, 'Only shows which files would have been modified'),
             ))
             ->setDescription('Creates vhosts')
@@ -61,31 +58,29 @@ EOF
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+        $this->output = $output;
+        $this->verbose = $input->getOption('verbose');
 
-        var_dump($input->getArguments());
+        $configFile = $this->determineConfigFile($input->getOption('config'));
+
+        if (! $this->checkConfig($configFile)) {
+            $output->writeln('<error>There is a problem with the config, run check:config for more information');
+            return 1;
+        }
+
+        $config = BaseConfig::fromYmlFile($configFile);
+        $path = $input->getOption('path') ? $input->getOption('path') : $config->getVhostsDir();
+        $hostname = $input->getOption('hostname') ? $input->getOption('hostname') : $config->getHostname();
+        $confDir = $input->getOption('sites-dir') ? $input->getOption('sites-dir') : $config->getSitesDir();
+
+        $vhost = $this->createVhost($path, $hostname, $confDir);
+
+        // TODO: save vhost object to use later...
 
         return empty($changed) ? 0 : 1;
     }
 
-//    protected function handleVhost($vhost, $documentRoot)
-//    {
-//        $config = array(
-//            'hostname' => $vhost,
-//            'adminEmail' => 'ddorfel@netvlies.nl',
-//            'documentRoot' => $documentRoot,
-//
-//            'errorLog' => null,
-//            'transferLog' => null,
-//            'xdebugProfiler' => null,
-//            'xdebugProfilerOutputDir' => null,
-//            'xDebugTraceOutputDir' => null,
-//        );
-//
-//        $this->createVhost($config);
-//        $this->createSslVhost($config);
-//    }
-
-    protected function createVhost(\SplFileInfo $directory, $hostname, $config)
+    protected function createVhost(\SplFileInfo $directory, $hostname, $sitesDir)
     {
         $serverName = $directory->getFilename() . '.' . $hostname;
         $options = array();
@@ -100,112 +95,14 @@ EOF
 
         $declaration = $vhost->process(array());
 
-        $file = $config->getSitesDir() . '/' . $vhost->getServerName() . '.conf';
+        $file = $sitesDir . '/' . $vhost->getServerName() . '.conf';
         $actionString = file_exists($file) ? 'Updated' : 'Created';
         file_put_contents($file, $declaration);
 
-        if ($this->input->getOption('verbose')) {
+        if ($this->verbose) {
             $this->output->writeln("<info>$actionString " . $file . "</info>") ;
         }
 
         return $vhost;
-    }
-
-    public function createSsl($vhost)
-    {
-
-    }
-
-    protected function createSslVhost($vhost)
-    {
-        $outputFile = $configPath . $config['hostname'] . '.conf';
-
-        if ($this->input->getOption('verbose')) {
-            if (file_exists($outputFile)) {
-                $this->output->writeln("<info>Updating " . $outputFile . "...</info>") ;
-            } else {
-                $this->output->writeln("<info>Creating " . $outputFile . "...</info>") ;
-            }
-        }
-
-        $vhost = $config['hostname'];
-        $certFile = "$certificatePath/$vhost.crt";
-        if(!file_exists($certFile)) {
-            $privateKeyFile = "$privateKeyPath/$vhost.key";
-            // Default create SSL certificate as well
-            exec("openssl genrsa -out $privateKeyFile 1024");
-            exec("openssl req -new -key $privateKeyFile -x509 -out $certFile -days 999 -subj '/C=NL/ST=NB/L=Breda/CN=$vhost'");
-        }
-
-        extract($config);
-//        ob_start();
-        var_dump(include __DIR__ . '/../Resources/views/vhostSsl.php'); die;
-//        $vhostDeclaration = ob_get_contents();
-//        ob_end_clean();
-
-        //todo: test if we can write here (are you permitted? Run as sudo)
-        file_put_contents($outputFile, $vhostDeclaration);
-    }
-
-    protected function findBasePath($root = null)
-    {
-        $basePath = is_null($root) ? getcwd() : $root;
-
-        if(file_exists($basePath . '/current/web')){
-            // For capistrano deployments
-            $basePath .= '/current/web';
-        } elseif(file_exists($basePath . '/current')) {
-            // For capifony deployments
-            $basePath .= '/current';
-        } elseif(file_exists($basePath . '/web')) {
-            // For default symfony projects
-            $basePath .= '/web';
-        }
-
-        return $basePath;
-    }
-
-    protected function cleanupVhosts($configPath = '/etc/httpd/sites.d/')
-    {
-        $sites = glob($configPath . '*.conf');
-
-        foreach ($sites as $site) {
-            $config = file_get_contents($site);
-
-            if (preg_match('/DocumentRoot (.*)/', $config, $match) && ! file_exists($match[1])) {
-                $this->output->writeln("<info>Removing $site</info>");
-                unlink($site);
-            }
-        }
-    }
-
-    protected function cleanupSslVhosts($configPath = '/etc/httpd/sslsites.d/')
-    {
-        $sites = glob($configPath . '*.conf');
-
-        foreach ($sites as $site) {
-            $config = file_get_contents($site);
-
-            if (preg_match('/DocumentRoot (.*)/', $config, $match) && ! file_exists($match[1])) {
-                $this->output->writeln("<info>Removing $site</info>");
-                unlink($site);
-                if (preg_match('/ServerName (.*)/', $config, $match)) {
-                    $certificatePath = '/etc/pki/tls/certs';
-                    $privateKeyPath = '/etc/pki/tls/private';
-
-                    $cert = $certificatePath . '/' . $match[1] . '.crt';
-                    if (file_exists($cert)) {
-                        $this->output->writeln("<info>Removing certificate $cert</info>");
-                        unlink($cert);
-                    }
-
-                    $key = $privateKeyPath . '/' . $match[1] . '.key';
-                    if (file_exists($key)) {
-                        $this->output->writeln("<info>Removing private key $key</info>");
-                        unlink($key);
-                    }
-                }
-            }
-        }
     }
 }

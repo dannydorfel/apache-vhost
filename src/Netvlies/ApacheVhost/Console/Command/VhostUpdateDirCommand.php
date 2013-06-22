@@ -14,7 +14,6 @@ use Netvlies\ApacheVhost\Config\BaseConfig;
 use Netvlies\ApacheVhost\Vhost\SubdomainVhost;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -92,52 +91,8 @@ EOF
     {
         // check the config
         $command = $this->getApplication()->find('vhost:create');
-        $input = new ArrayInput(array('command' => 'vhost:create', 'path' => $directory, 'hostname' => $hostname));
+        $input = new ArrayInput(array('command' => 'vhost:create', '--path' => $directory, '--hostname' => $hostname));
         return $command->run($input, $output) == 0;
-    }
-
-//    protected function handleVhost($vhost, $documentRoot)
-//    {
-//        $config = array(
-//            'hostname' => $vhost,
-//            'adminEmail' => 'ddorfel@netvlies.nl',
-//            'documentRoot' => $documentRoot,
-//
-//            'errorLog' => null,
-//            'transferLog' => null,
-//            'xdebugProfiler' => null,
-//            'xdebugProfilerOutputDir' => null,
-//            'xDebugTraceOutputDir' => null,
-//        );
-//
-//        $this->createVhost($config);
-//        $this->createSslVhost($config);
-//    }
-
-    protected function createVhost(\SplFileInfo $directory, $hostname, $config)
-    {
-        $serverName = $directory->getFilename() . '.' . $hostname;
-        $options = array();
-        $vhost = new SubdomainVhost($serverName, $directory, $options);
-
-        if (! $vhost->isValid()) {
-            if ($this->input->getOption('verbose')) {
-                $this->output->writeln("<error>Skipping invalid hostname '" . $vhost . "'</error>");
-            }
-            return false;
-        }
-
-        $declaration = $vhost->process(array());
-
-        $file = $config->getSitesDir() . '/' . $vhost->getServerName() . '.conf';
-        $actionString = file_exists($file) ? 'Updated' : 'Created';
-        file_put_contents($file, $declaration);
-
-        if ($this->input->getOption('verbose')) {
-            $this->output->writeln("<info>$actionString " . $file . "</info>") ;
-        }
-
-        return $vhost;
     }
 
     public function createSsl($vhost)
@@ -174,24 +129,6 @@ EOF
 
         //todo: test if we can write here (are you permitted? Run as sudo)
         file_put_contents($outputFile, $vhostDeclaration);
-    }
-
-    protected function findBasePath($root = null)
-    {
-        $basePath = is_null($root) ? getcwd() : $root;
-
-        if(file_exists($basePath . '/current/web')){
-            // For capistrano deployments
-            $basePath .= '/current/web';
-        } elseif(file_exists($basePath . '/current')) {
-            // For capifony deployments
-            $basePath .= '/current';
-        } elseif(file_exists($basePath . '/web')) {
-            // For default symfony projects
-            $basePath .= '/web';
-        }
-
-        return $basePath;
     }
 
     protected function cleanupVhosts($configPath = '/etc/httpd/sites.d/')
