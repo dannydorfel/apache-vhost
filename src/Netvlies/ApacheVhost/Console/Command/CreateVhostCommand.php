@@ -11,6 +11,7 @@
 namespace Netvlies\ApacheVhost\Console\Command;
 
 use Netvlies\ApacheVhost\Config\BaseConfig;
+use Netvlies\ApacheVhost\Config\VhostConfig;
 use Netvlies\ApacheVhost\Vhost\SubdomainVhost;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputInterface;
@@ -69,21 +70,32 @@ EOF
         }
 
         $config = BaseConfig::fromYmlFile($configFile);
+        $vhostConfigFile = $config->getConfigDir() . '/vhost-config.yml';
+
+        if (file_exists($vhostConfigFile)) {
+            $vhostConfig = VhostConfig::fromYmlFile($vhostConfigFile);
+        } else {
+            $vhostConfig = new VhostConfig();
+        }
+
         $path = $input->getOption('path') ? $input->getOption('path') : $config->getVhostsDir();
         $hostname = $input->getOption('hostname') ? $input->getOption('hostname') : $config->getHostname();
         $confDir = $input->getOption('sites-dir') ? $input->getOption('sites-dir') : $config->getSitesDir();
 
-        $vhost = $this->createVhost($path, $hostname, $confDir);
+        $vhost = $this->createUpdateVhost($path, $hostname, $confDir, $vhostConfig);
 
-        // TODO: save vhost object to use later...
+        $vhostConfig->set($vhost->getServerName(), $vhost->toArray());
+        $vhostConfig->saveToFile($vhostConfigFile);
 
         return empty($changed) ? 0 : 1;
     }
 
-    protected function createVhost(\SplFileInfo $directory, $hostname, $sitesDir)
+    protected function createUpdateVhost(\SplFileInfo $directory, $hostname, $sitesDir, $vhostConfig)
     {
         $serverName = $directory->getFilename() . '.' . $hostname;
-        $options = array();
+
+        $options = $vhostConfig->has($serverName) ? $vhostConfig->get($serverName) : array();
+
         $vhost = new SubdomainVhost($serverName, $directory, $options);
 
         if (! $vhost->isValid()) {

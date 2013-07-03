@@ -27,6 +27,8 @@ class SubdomainVhost
      * @var
      */
     private $serverName;
+    private $documentRoot;
+    private $options;
 
     /**
      * @param $serverName
@@ -60,12 +62,14 @@ class SubdomainVhost
         $twig = new \Twig_Environment($loader);
 
         $documentRootFinder = new DocumentRootFinder();
-        $documentRoot = $documentRootFinder->find($this->fileInfo->getRealPath());
+        $this->documentRoot = $documentRoot = $documentRootFinder->find($this->fileInfo->getRealPath());
 
         $virtualHost = $this->getNameVirtualHost(array());
 //        $directories = $this->getDirectoryDeclaration($config);
 
-        $vars = compact('virtualHost', 'serverName', 'adminEmail', 'documentRoot', 'hostName');
+        $options = $this->options;
+
+        $vars = compact('virtualHost', 'serverName', 'adminEmail', 'documentRoot', 'hostName', 'options');
 
         $output = $twig->render('vhost.twig', $vars);
         return $output;
@@ -114,5 +118,16 @@ class SubdomainVhost
     public function getServerName()
     {
         return $this->serverName;
+    }
+
+    public function toArray()
+    {
+        return array_merge(
+            array(
+                'serverName' => $this->serverName,
+                'documentRoot' => $this->documentRoot,
+            ),
+            $this->options
+        );
     }
 }
