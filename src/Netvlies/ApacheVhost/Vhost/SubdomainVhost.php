@@ -58,7 +58,9 @@ class SubdomainVhost
 
         $adminEmail = 'webmaster@localhost';
 
-        $loader = new \Twig_Loader_Filesystem(__DIR__ . '/../Resources/views/');
+        $tpl = $this->getTemplate();
+
+        $loader = new \Twig_Loader_String();
         $twig = new \Twig_Environment($loader);
 
         $documentRootFinder = new DocumentRootFinder();
@@ -71,7 +73,7 @@ class SubdomainVhost
 
         $vars = compact('virtualHost', 'serverName', 'adminEmail', 'documentRoot', 'hostName', 'options');
 
-        $output = $twig->render('vhost.twig', $vars);
+        $output = $twig->render($tpl, $vars);
         return $output;
     }
 
@@ -94,6 +96,48 @@ class SubdomainVhost
         }
 
         return empty($directoryDeclarations) ? '' : implode(PHP_EOL, $directoryDeclarations) . PHP_EOL;
+    }
+
+    protected function getTemplate()
+    {
+        return <<<EOF
+{# (c) Netvlies Internetdiensten
+
+    author D. Dörfel <ddorfel@netvlies.nl>
+    date: 2013-03-07 15:24
+
+    For the full copyright and license information, please view the LICENSE
+    file that was distributed with this source code. #}
+<VirtualHost {{ virtualHost }}>
+
+    ServerAdmin {{ adminEmail }}
+    DocumentRoot {{ documentRoot }}
+    ServerName {{ serverName }}
+{% if options.serverAlias is defined %}
+{% for alias in options.serverAlias %}
+    ServerAlias {{ alias }}
+{% endfor %}
+{% endif %}
+{% if errorLog is defined and errorLog %}    ErrorLog {{ errorLog }}{% endif %}
+{% if transferLog is defined and transferLog %}    TransferLog {{ transferLog }}{% endif %}
+{#if (file_exists(\$basedir.'/aliases.txt')) {#}
+{#\$aliases = preg_split('/[\s]{1,99}/', trim(file_get_contents(\$basedir.'/aliases.txt')));#}
+{#foreach (\$aliases as &\$alias) {#}
+{#\$alias .= '.' . \$vhost;#}
+{#}#}
+{#echo "  (with aliases: ".implode(', ', \$aliases).")\n";#}
+{#\$textfile .= "\tServerAlias ".implode(' ', \$aliases)."\n";#}
+{#}#}
+
+    <Directory {{ documentRoot }}>
+        AllowOverride All
+{#<?php if (isset(\$xDebugProfiler) && \$xDebugProfiler): ?>php_admin_flag xdebug.profiler_enable_trigger 1<?php endif ?>#}
+{#<?php if (isset(\$xDebugProfilerOutputDir) && \$xDebugProfilerOutputDir): ?>php_admin_value xdebug.profiler_output_dir <?php print \$xDebugProfilerOutputDir; endif ?>#}
+{#<?php if (isset(\$xDebugTraceOutputDir) && \$xDebugTraceOutputDir): ?>php_admin_value xdebug.trace_output_dir <?php print \$xDebugTraceOutputDir; endif ?>#}
+</Directory>
+
+</VirtualHost>
+EOF;
     }
 
     public function __toString()
